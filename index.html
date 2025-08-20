@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Gráficas de Funciones</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            height: 100vh;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        #sidebar {
+            width: 280px;
+            background-color: #ffffff;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+        }
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #chart-container {
+            width: 95%;
+            max-width: 800px;
+            flex-grow: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h1, h2, h3 {
+            color: #1a237e;
+            margin-top: 0;
+        }
+        h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            text-align: left;
+            font-size: 15px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        button:hover {
+            background-color: #e9ecef;
+        }
+        button.active {
+            background-color: #1a237e;
+            color: white;
+            border-color: #1a237e;
+        }
+        #info-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-left: 5px solid #1976d2;
+            width: 95%;
+            max-width: 800px;
+            border-radius: 0 8px 8px 0;
+        }
+        #function-equation {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        #function-description {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>Visualizador de Funciones</h2>
+        
+        <h3>Funciones Algebraicas</h3>
+        <button id="btn-constante" class="function-btn">Constante</button>
+        <button id="btn-lineal" class="function-btn">Lineal</button>
+        <button id="btn-cuadratica" class="function-btn">Cuadrática</button>
+        <button id="btn-racional" class="function-btn">Racional</button>
+        <button id="btn-radical" class="function-btn">Radical</button>
+
+        <h3>Funciones Trascendentes</h3>
+        <button id="btn-exponencial" class="function-btn">Exponencial</button>
+        <button id="btn-logaritmica" class="function-btn">Logarítmica</button>
+        <button id="btn-seno" class="function-btn">Seno</button>
+        <button id="btn-coseno" class="function-btn">Coseno</button>
+        <button id="btn-tangente" class="function-btn">Tangente</button>
+
+        <h3>Funciones Especiales</h3>
+        <button id="btn-absoluto" class="function-btn">Valor Absoluto</button>
+        <button id="btn-escalonada" class="function-btn">Escalonada (Parte Entera)</button>
+        <button id="btn-trozos" class="function-btn">Definida a Trozos</button>
+    </div>
+    <div id="main-content">
+        <div id="chart-container">
+            <canvas id="functionChart"></canvas>
+        </div>
+        <div id="info-box">
+            <p id="function-equation">f(x) = ...</p>
+            <p id="function-description">Descripción de la familia de funciones.</p>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('functionChart').getContext('2d');
+        let chart;
+
+        // Paleta de colores para las gráficas
+        const colors = ['#1a237e', '#d32f2f', '#388e3c', '#f57c00', '#512da8'];
+
+        const functions = {
+            constante: {
+                label: 'Función Constante',
+                equation: 'f(x) = c',
+                description: 'Líneas horizontales que representan un valor que no cambia.',
+                datasets: [
+                    { label: 'f(x) = 3', generateData: () => Array.from({length: 41}, (_, i) => ({x: -10 + i * 0.5, y: 3})) },
+                    { label: 'f(x) = -2', generateData: () => Array.from({length: 41}, (_, i) => ({x: -10 + i * 0.5, y: -2})) },
+                    { label: 'f(x) = 0', generateData: () => Array.from({length: 41}, (_, i) => ({x: -10 + i * 0.5, y: 0})) }
+                ],
+                options: { stepped: false }
+            },
+            lineal: {
+                label: 'Función Lineal',
+                equation: 'f(x) = mx + b',
+                description: 'Líneas rectas con diferentes pendientes e intercepciones.',
+                datasets: [
+                    { label: 'f(x) = 2x + 1', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: 2 * x + 1}; }) },
+                    { label: 'f(x) = -x + 3', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: -x + 3}; }) },
+                    { label: 'f(x) = 0.5x - 2', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: 0.5 * x - 2}; }) }
+                ],
+                options: { stepped: false }
+            },
+            cuadratica: {
+                label: 'Función Cuadrática',
+                equation: 'f(x) = ax² + bx + c',
+                description: 'Curvas simétricas (parábolas) que se abren hacia arriba o hacia abajo.',
+                datasets: [
+                    { label: 'f(x) = x²', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: x*x}; }) },
+                    { label: 'f(x) = -x² + 4', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: -x*x + 4}; }) },
+                    { label: 'f(x) = (x-2)²', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: (x-2)*(x-2)}; }) }
+                ],
+                options: { stepped: false }
+            },
+            racional: {
+                label: 'Función Racional',
+                equation: 'f(x) = P(x) / Q(x)',
+                description: 'Se caracterizan por tener asíntotas donde el denominador es cero.',
+                datasets: [
+                    { label: 'f(x) = 1/x', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return Math.abs(x) < 0.05 ? {x:x, y:null} : {x: x, y: 1/x}; }) },
+                    { label: 'f(x) = 5/(x-2)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return Math.abs(x-2) < 0.05 ? {x:x, y:null} : {x: x, y: 5/(x-2)}; }) }
+                ],
+                options: { stepped: false, spanGaps: false }
+            },
+            radical: {
+                label: 'Función Radical',
+                equation: 'f(x) = √x',
+                description: 'Su dominio está restringido a valores que no hacen negativo el radicando (para raíces pares).',
+                datasets: [
+                    { label: 'f(x) = √x', generateData: () => Array.from({length: 101}, (_, i) => { const x = 0 + i * 0.1; return {x: x, y: Math.sqrt(x)}; }) },
+                    { label: 'f(x) = ∛x', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: Math.cbrt(x)}; }) }
+                ],
+                options: { stepped: false }
+            },
+            exponencial: {
+                label: 'Función Exponencial',
+                equation: 'f(x) = a^x',
+                description: 'Curvas que muestran crecimiento o decrecimiento muy rápido.',
+                datasets: [
+                    { label: 'f(x) = 2^x', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: Math.pow(2, x)}; }) },
+                    { label: 'f(x) = e^x', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: Math.exp(x)}; }) },
+                    { label: 'f(x) = (0.5)^x', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: Math.pow(0.5, x)}; }) }
+                ],
+                options: { stepped: false, scales: { y: { min: 0, max: 20 } } }
+            },
+            logaritmica: {
+                label: 'Función Logarítmica',
+                equation: 'f(x) = logₐ(x)',
+                description: 'Inversas de las exponenciales. Crecen lentamente y tienen una asíntota vertical.',
+                datasets: [
+                    { label: 'f(x) = ln(x)', generateData: () => Array.from({length: 100}, (_, i) => { const x = 0.01 + i * 0.1; return {x: x, y: Math.log(x)}; }) },
+                    { label: 'f(x) = log₁₀(x)', generateData: () => Array.from({length: 100}, (_, i) => { const x = 0.01 + i * 0.1; return {x: x, y: Math.log10(x)}; }) }
+                ],
+                options: { stepped: false }
+            },
+            seno: {
+                label: 'Función Seno',
+                equation: 'f(x) = A·sin(Bx)',
+                description: 'Ondas periódicas que oscilan. A afecta la amplitud, B afecta el período.',
+                datasets: [
+                    { label: 'f(x) = sin(x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: Math.sin(x)}; }) },
+                    { label: 'f(x) = 2sin(x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: 2 * Math.sin(x)}; }) },
+                    { label: 'f(x) = sin(2x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: Math.sin(2 * x)}; }) }
+                ],
+                options: { stepped: false }
+            },
+            coseno: {
+                label: 'Función Coseno',
+                equation: 'f(x) = A·cos(Bx)',
+                description: 'Ondas periódicas similares al seno, pero desfasadas.',
+                datasets: [
+                    { label: 'f(x) = cos(x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: Math.cos(x)}; }) },
+                    { label: 'f(x) = 3cos(x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: 3 * Math.cos(x)}; }) },
+                    { label: 'f(x) = cos(0.5x)', generateData: () => Array.from({length: 201}, (_, i) => { const x = -10 + i * 0.1; return {x: x, y: Math.cos(0.5 * x)}; }) }
+                ],
+                options: { stepped: false }
+            },
+            tangente: {
+                label: 'Función Tangente',
+                equation: 'f(x) = tan(x)',
+                description: 'Función periódica con asíntotas verticales donde el coseno es cero.',
+                datasets: [
+                    { label: 'f(x) = tan(x)', generateData: () => Array.from({length: 401}, (_, i) => { const x = -10 + i * 0.05; return Math.abs(Math.cos(x)) < 0.03 ? {x:x, y:null} : {x: x, y: Math.tan(x)}; }) }
+                ],
+                options: { stepped: false, spanGaps: false, scales: { y: { min: -10, max: 10 } } }
+            },
+            absoluto: {
+                label: 'Función Valor Absoluto',
+                equation: 'f(x) = |...|',
+                description: 'Gráficas en forma de "V" que representan la distancia a cero.',
+                datasets: [
+                    { label: 'f(x) = |x|', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: Math.abs(x)}; }) },
+                    { label: 'f(x) = |x-3|', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: Math.abs(x-3)}; }) },
+                    { label: 'f(x) = -|x|+2', generateData: () => Array.from({length: 41}, (_, i) => { const x = -10 + i * 0.5; return {x: x, y: -Math.abs(x)+2}; }) }
+                ],
+                options: { stepped: false }
+            },
+            escalonada: {
+                label: 'Función Escalonada',
+                equation: 'f(x) = floor(x), ceil(x)',
+                description: 'Asignan a cada número un valor entero cercano, creando una gráfica de "escalones".',
+                datasets: [
+                    { label: 'f(x) = floor(x)', generateData: () => Array.from({length: 2001}, (_, i) => { const x = -10 + i * 0.01; return {x: x, y: Math.floor(x)}; }), options: { stepped: 'before' } },
+                    { label: 'f(x) = ceil(x)', generateData: () => Array.from({length: 2001}, (_, i) => { const x = -10 + i * 0.01; return {x: x, y: Math.ceil(x)}; }), options: { stepped: 'after' } }
+                ],
+            },
+            trozos: {
+                label: 'Función Definida a Trozos',
+                equation: 'f(x) = { ... }',
+                description: 'La gráfica está compuesta por diferentes "trozos" de otras funciones.',
+                 datasets: [
+                    { label: 'f(x) = { x² si x<0; 2 si 0≤x<3; -x+5 si x≥3 }', generateData: () => {
+                        const data = [];
+                        for (let x = -5; x <= 8; x += 0.1) {
+                            let y;
+                            if (x < 0) y = x * x;
+                            else if (x >= 0 && x < 3) y = 2;
+                            else y = -x + 5;
+                            data.push({x: x.toFixed(2), y: y});
+                        }
+                        return data;
+                    }}
+                ],
+                options: { stepped: false }
+            }
+        };
+
+        function plotFunction(functionName) {
+            if (chart) {
+                chart.destroy();
+            }
+
+            const func = functions[functionName];
+            
+            document.getElementById('function-equation').textContent = func.equation;
+            document.getElementById('function-description').textContent = func.description;
+            
+            document.querySelectorAll('.function-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${functionName}`).classList.add('active');
+
+            const chartDatasets = func.datasets.map((dataset, index) => {
+                return {
+                    label: dataset.label,
+                    data: dataset.generateData(),
+                    borderColor: colors[index % colors.length],
+                    borderWidth: 2.5,
+                    fill: false,
+                    tension: 0.1,
+                    ...dataset.options // Apply specific options like 'stepped'
+                };
+            });
+
+            const baseOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: 'x' },
+                        border: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.8)',
+                            width: 1.5
+                        },
+                        grid: {
+                            // Dibuja una línea en x=0
+                            color: (context) => context.tick.value === 0 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.1)',
+                        }
+                    },
+                    y: {
+                        title: { display: true, text: 'f(x)' },
+                        border: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.8)',
+                            width: 1.5
+                        },
+                        grid: {
+                            // Dibuja una línea en y=0
+                            color: (context) => context.tick.value === 0 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.1)',
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: func.label,
+                        font: { size: 18 }
+                    },
+                    legend: {
+                        display: true, // Show the legend
+                        position: 'top',
+                    }
+                },
+                elements: {
+                    point: { radius: 0 }
+                }
+            };
+            
+            const chartOptions = {...baseOptions, ...func.options };
+             if (func.options && func.options.scales) {
+                chartOptions.scales = {...baseOptions.scales, ...func.options.scales };
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: chartDatasets
+                },
+                options: chartOptions
+            });
+        }
+
+        document.querySelectorAll('.function-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const functionName = e.target.id.replace('btn-', '');
+                plotFunction(functionName);
+            });
+        });
+
+        // Initial plot
+        plotFunction('lineal');
+    </script>
+</body>
+</html>
